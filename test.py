@@ -83,11 +83,16 @@ def test_large_population(plot=False):
         log_y_sim_stocha = run_model(y_init=y_init, pd=pd, pb=pb, modelling_approach='stochastic')[0]
         all_log_y_sim.append(log_y_sim_stocha)
         if plot:
-            ax.plot(log_y_sim_stocha, color='black', alpha=0.2)
+            ax.plot(log_y_sim_stocha, color='black', alpha=0.4)
     if plot:
         ax.grid()
         ax.set_xlabel('Time (hours)')
         ax.set_ylabel('log CFU per ml')
+        ymin, ymax = ax.get_ylim()
+        ax.axhspan(3, 6, facecolor='purple', alpha=0.2, label='high population')
+        ax.axhspan(0, 3, facecolor='blue', alpha=0.2, label='low population')
+        ax.set_ylim([0, 6])
+        ax.legend()
         plt.show()
 
     # Check that the variance grows as expected (until extinction)
@@ -327,7 +332,7 @@ def test_sample_posterior(plot=False):
 if __name__ == '__main__':
     #test_load_data(plot=False)
     #test_run_model(plot=True)
-    #test_large_population(plot=True)
+    test_large_population(plot=True)
     #test_gaussian_approx(plot=True)
     #test_likelihood(plot=True)
     #test_sample_posterior(plot=True)
