@@ -247,7 +247,8 @@ def sample_posterior(trajectories, initial_proposal_width=0.1, plot=False):
         proposal_width = np.copy(initial_proposal_width)
 
         # Have a few attempts at tuning proposal width
-        for _ in range(5):
+        attempts = 0
+        while True:
             samples, ar = mcmc.generate_samples(params_current=params0, data=trajectory, proposal_width=proposal_width,
                                                 n_samples=12000, n_chains=n_chains, plot_live=False)
 
@@ -259,8 +260,11 @@ def sample_posterior(trajectories, initial_proposal_width=0.1, plot=False):
             elif av_acceptance_rate > 40:
                 proposal_width *= 2
                 print('Re-running with proposal width', proposal_width)
+            elif attempts > 5:
+                print('Failed to tune proposal')
             else:
                 break
+            attempts += 1
 
         # Remove burn-in and keep every 100th sample
         burn_in = 2000
@@ -307,20 +311,18 @@ def sample_posterior(trajectories, initial_proposal_width=0.1, plot=False):
 def main():
 
     # Load data
-    trajectories = utils.load_data(data_type='gold standard')
+    trajectories = utils.load_data(data_type='animal')
 
     # MCMC
-    samples = sample_posterior(trajectories, plot=True)
+    samples = sample_posterior(trajectories, initial_proposal_width=1e-3, plot=True)
 
     # Save samples to disk
-    '''
     try:
         np.savetxt('population_samples_temp.csv', samples, delimiter=',',
                    header='pd,pb', comments='')
         print(f"Saved population_samples ({samples.shape}) to population_samples_temp.csv")
     except Exception as e:
         print(f"Warning: failed to save samples to CSV: {e}")
-    '''
 
 if __name__ == '__main__':
     main()
