@@ -284,7 +284,7 @@ def test_sample_posterior(plot=False):
         ax.grid()
 
     # Run MCMC
-    samples = Bayes.sample_posterior(trajectories=[trajectory], initial_proposal_width=0.005, plot=False)
+    samples = Bayes.sample_posterior(trajectories=[trajectory], initial_proposal_width=0.1, plot=False)
 
     # Model predictions using MCMC samples
     all_logy_sim = []
@@ -319,7 +319,7 @@ def test_sample_posterior(plot=False):
         ax.legend()
         ax.set_ylim([0, 7])
         ax.set_xlabel('Time (hours)')
-        ax.set_ylabel('Log Fungal Burden')
+        ax.set_ylabel('Log CFU per ml')
         plt.tight_layout()
 
     assert np.allclose(mean_prediction, log_y_sim, atol=2)
@@ -332,8 +332,8 @@ def test_sample_posterior(plot=False):
 if __name__ == '__main__':
     #test_load_data(plot=False)
     #test_run_model(plot=True)
-    test_large_population(plot=True)
+    #test_large_population(plot=True)
     #test_gaussian_approx(plot=True)
     #test_likelihood(plot=True)
-    #test_sample_posterior(plot=True)
+    test_sample_posterior(plot=True)
     plt.show()
