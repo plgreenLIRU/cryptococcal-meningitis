@@ -262,6 +262,7 @@ def sample_posterior(trajectories, initial_proposal_width=0.1, plot=False):
                 print('Re-running with proposal width', proposal_width)
             elif attempts > 5:
                 print('Failed to tune proposal')
+                break
             else:
                 break
             attempts += 1
