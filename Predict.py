@@ -2,6 +2,7 @@ from utils import run_model, load_data
 from Bayes import sample_posterior, threshold_line
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn.linear_model import LinearRegression
 
 
 def predict_new_trajectory(new_trajectory, trajectories):
@@ -20,6 +21,12 @@ def predict_new_trajectory(new_trajectory, trajectories):
     # Plot data point from new trajectory
     ax[0].plot(new_trajectory['times'], new_trajectory['log y'], marker='o', color='red')
 
+    # Fit linear regression model
+    lr = LinearRegression()
+    X = new_trajectory['times'].reshape(-1, 1)
+    y = new_trajectory['log y']
+    lr.fit(X, y)
+
     # Infer parameters for new trajectory
     samples = sample_posterior([new_trajectory], initial_proposal_width=0.01, plot=False)
 
@@ -28,6 +35,11 @@ def predict_new_trajectory(new_trajectory, trajectories):
         pd, pb = s
         logy_sim, y_sim = run_model(y_init=new_trajectory['y'][-1], pd=pd, pb=pb)
         ax[0].plot(np.arange(new_trajectory['times'][-1], new_trajectory['times'][-1] + len(logy_sim)), logy_sim, color='blue', alpha=0.1)
+    
+    # Plot linear regression predictions
+    X_star = (np.arange(new_trajectory['times'][-1], new_trajectory['times'][-1] + len(logy_sim))).reshape(-1, 1)
+    ax[0].plot(X_star, lr.predict(X_star), '--', color='yellow', linewidth=3, label='Linear Regression')
+    ax[0].set_ylim([0, 7])
 
     # Plot MCMC samples
     pd_range = np.linspace(0, 0.999, 100)
