@@ -1,0 +1,17 @@
+[project]
+name = "cryptococcal-meningitis"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.11.1",
+    "numpy>=2.5.2",
+    "pandas>=3.0.5",
+    "samplers",
+    "scikit-learn>=1.9.0",
+    "scipy>=1.18.0",
+]
+
+[tool.uv.sources]
+samplers = { git = "https://github.com/plgreenLIRU/samplers.git" }
