@@ -76,14 +76,23 @@ if __name__ == '__main__':
     # Load gold-standard data    
     trajectories = load_data(data_type='gold standard')
 
-    # Create new trajectory
-    new_times = np.array([0, 24, 36, 48, 72])
-    new_logy = np.array([5, 4.5, 4, 3.5, 3])
+    # Create declining synthetic trajectory from the model
+    new_times = np.array([0, 24, 48, 72, 96])
+    new_trajectory_full = simulate_noisy_trajectory(
+        y_init=10**5,
+        pd=0.2,
+        pb=0.18,
+        times=new_times,
+        rng=rng,
+    )
 
     # Gradually introduce data, doing Bayesian inference after each LP
     for i in range(2, len(new_times)+1):
-        new_y = 10**new_logy[:i]
-        new_trajectory = {'times': new_times[:i], 'log y': new_logy[:i], 'y': new_y[:i]}
+        new_trajectory = {
+            'times': new_trajectory_full['times'][:i],
+            'log y': new_trajectory_full['log y'][:i],
+            'y': new_trajectory_full['y'][:i],
+        }
         predict_new_trajectory(new_trajectory=new_trajectory, trajectories=trajectories)
 
     # Create a growth trajectory from model parameters with crypto growth over time
