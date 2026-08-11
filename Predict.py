@@ -5,7 +5,17 @@ from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 
 
-def predict_new_trajectory(new_trajectory, trajectories):
+def simulate_noisy_trajectory(y_init, pd, pb, times, rng, noise_sd=0.1):
+    logy_full, y_full = run_model(y_init=y_init, pd=pd, pb=pb, modelling_approach='stochastic')
+    logy_obs = logy_full[times] + rng.normal(0, noise_sd, size=len(times))
+    return {
+        'times': times,
+        'log y': logy_obs,
+        'y': 10**logy_obs,
+    }
+
+
+def predict_new_trajectory(new_trajectory, trajectories, title=None):
 
     # Initialise plot
     fig, ax = plt.subplots(ncols=2)
@@ -39,7 +49,7 @@ def predict_new_trajectory(new_trajectory, trajectories):
     # Plot linear regression predictions
     X_star = (np.arange(new_trajectory['times'][-1], new_trajectory['times'][-1] + len(logy_sim))).reshape(-1, 1)
     ax[0].plot(X_star, lr.predict(X_star), '--', color='yellow', linewidth=3, label='Linear Regression')
-    ax[0].set_ylim([0, 7])
+    ax[0].set_ylim([0, 8])
 
     # Plot MCMC samples
     pd_range = np.linspace(0, 0.999, 100)
@@ -61,6 +71,8 @@ def predict_new_trajectory(new_trajectory, trajectories):
 
 if __name__ == '__main__':
 
+    rng = np.random.default_rng(42)
+
     # Load gold-standard data    
     trajectories = load_data(data_type='gold standard')
 
@@ -73,5 +85,29 @@ if __name__ == '__main__':
         new_y = 10**new_logy[:i]
         new_trajectory = {'times': new_times[:i], 'log y': new_logy[:i], 'y': new_y[:i]}
         predict_new_trajectory(new_trajectory=new_trajectory, trajectories=trajectories)
+
+    # Create a growth trajectory from model parameters with crypto growth over time
+    growth_pd = 0.2
+    growth_pb = 0.28
+    growth_times = np.array([0, 48, 96, 144, 192])  # 5 LPs -> 4 panels
+    growth_trajectory_full = simulate_noisy_trajectory(
+        y_init=10**2,
+        pd=growth_pd,
+        pb=growth_pb,
+        times=growth_times,
+        rng=rng,
+    )
+
+    # Gradually introduce data, doing Bayesian inference after each LP
+    for i in range(2, len(growth_times) + 1):
+        growth_trajectory = {
+            'times': growth_trajectory_full['times'][:i],
+            'log y': growth_trajectory_full['log y'][:i],
+            'y': growth_trajectory_full['y'][:i],
+        }
+        predict_new_trajectory(
+            new_trajectory=growth_trajectory,
+            trajectories=trajectories
+        )
 
     plt.show()
