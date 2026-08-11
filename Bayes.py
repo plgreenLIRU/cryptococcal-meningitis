@@ -315,7 +315,7 @@ def main():
     trajectories = utils.load_data(data_type='animal')
 
     # MCMC
-    samples = sample_posterior(trajectories, initial_proposal_width=1e-3, plot=True)
+    samples = sample_posterior(trajectories, initial_proposal_width=1e-3, plot=False)
 
     # Save samples to disk
     try:
