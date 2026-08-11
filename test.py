@@ -89,8 +89,8 @@ def test_large_population(plot=False):
         ax.set_xlabel('Time (hours)')
         ax.set_ylabel('log CFU per ml')
         ymin, ymax = ax.get_ylim()
-        ax.axhspan(3, 6, facecolor='purple', alpha=0.2, label='high population')
-        ax.axhspan(0, 3, facecolor='blue', alpha=0.2, label='low population')
+        ax.axhspan(3, 6, facecolor='#d8c2e3', alpha=0.35, label='high population')
+        ax.axhspan(0, 3, facecolor='#b8d8e8', alpha=0.35, label='low population')
         ax.set_ylim([0, 6])
         ax.legend()
         plt.show()
@@ -332,10 +332,10 @@ def test_sample_posterior(plot=False):
 
 
 if __name__ == '__main__':
-    #test_load_data(plot=False)
-    #test_run_model(plot=True)
-    #test_large_population(plot=True)
-    #test_gaussian_approx(plot=True)
-    #test_likelihood(plot=True)
+    test_load_data(plot=False)
+    test_run_model(plot=True)
+    test_large_population(plot=True)
+    test_gaussian_approx(plot=True)
+    test_likelihood(plot=True)
     test_sample_posterior(plot=True)
     plt.show()
