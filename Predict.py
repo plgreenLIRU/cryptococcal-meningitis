@@ -5,9 +5,9 @@ from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 
 
-def simulate_noisy_trajectory(y_init, pd, pb, times, rng, noise_sd=0.1):
+def simulate_noisy_trajectory(y_init, pd, pb, times, noise_sd=0.1):
     logy_full, y_full = run_model(y_init=y_init, pd=pd, pb=pb, modelling_approach='stochastic')
-    logy_obs = logy_full[times] + rng.normal(0, noise_sd, size=len(times))
+    logy_obs = logy_full[times] + np.random.normal(0, noise_sd, size=len(times))
     return {
         'times': times,
         'log y': logy_obs,
@@ -71,7 +71,7 @@ def predict_new_trajectory(new_trajectory, trajectories, title=None):
 
 if __name__ == '__main__':
 
-    rng = np.random.default_rng(42)
+    np.random.seed(42)
 
     # Load gold-standard data    
     trajectories = load_data(data_type='gold standard')
@@ -83,7 +83,6 @@ if __name__ == '__main__':
         pd=0.2,
         pb=0.18,
         times=new_times,
-        rng=rng,
     )
 
     # Gradually introduce data, doing Bayesian inference after each LP
@@ -104,7 +103,6 @@ if __name__ == '__main__':
         pd=growth_pd,
         pb=growth_pb,
         times=growth_times,
-        rng=rng,
     )
 
     # Gradually introduce data, doing Bayesian inference after each LP
