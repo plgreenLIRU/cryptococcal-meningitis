@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
 import utils
@@ -318,10 +320,12 @@ def main():
     samples = sample_posterior(trajectories, initial_proposal_width=1e-3, plot=False)
 
     # Save samples to disk
+    output_path = Path(__file__).resolve().parent / 'sims' / 'population_samples_temp.csv'
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        np.savetxt('population_samples_temp.csv', samples, delimiter=',',
+        np.savetxt(output_path, samples, delimiter=',',
                    header='pd,pb', comments='')
-        print(f"Saved population_samples ({samples.shape}) to population_samples_temp.csv")
+        print(f"Saved population_samples ({samples.shape}) to {output_path}")
     except Exception as e:
         print(f"Warning: failed to save samples to CSV: {e}")
 

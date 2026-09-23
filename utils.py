@@ -1,5 +1,10 @@
+from pathlib import Path
+
 import numpy as np
 import pandas
+
+
+DATA_DIR = Path(__file__).resolve().parent / 'data'
 
 
 def _stochastic_transition_count(y_current, pd, pb):
@@ -23,7 +28,7 @@ def load_data(data_type : str):
     """
 
     # Load raw dataset
-    df = pandas.read_csv('Arm2.csv', header=1)
+    df = pandas.read_csv(DATA_DIR / 'Arm2.csv', header=1)
 
     # Remove OUT == "."
     df = df[df["OUT"] != "."]
@@ -101,7 +106,8 @@ def run_model(y_init, pd, pb, modelling_approach='stochastic'):
 
     
     y_sim = np.array(y_sim)
-    log_y_sim = np.log10(y_sim)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        log_y_sim = np.log10(y_sim)
 
     # Replace -infs with zeros
     indx = log_y_sim < 0
