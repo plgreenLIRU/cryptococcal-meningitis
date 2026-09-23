@@ -1,8 +1,117 @@
+import os
+from pathlib import Path
+
 from utils import run_model, load_data
 from Bayes import sample_posterior, threshold_line
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
+
+
+def infer_posterior_and_predict(
+    observed_times,
+    observed_y,
+    population_trajectories,
+    predict_to_time=None,
+    y_scale='linear',
+    modelling_approach='stochastic',
+    initial_proposal_width=0.01,
+):
+    """
+    Infer posterior samples for a single patient trajectory and optionally
+    generate posterior predictive trajectories up to a requested time.
+
+    Parameters
+    - observed_times: array-like
+        One or more observed times for a patient.
+    - observed_y: array-like
+        Observed patient values at `observed_times`.
+    - population_trajectories: list
+        Population trajectories kept in the API for downstream workflows.
+    - predict_to_time: int or None
+        If provided, generate predictions from the final observed point up to
+        this absolute time.
+    - y_scale: str
+        Either 'linear' (observed_y are counts) or 'log10' (observed_y are
+        log10 counts).
+    - modelling_approach: str
+        Passed to `run_model` when generating predictive trajectories.
+    - initial_proposal_width: float
+        Proposal width passed through to `sample_posterior`.
+
+    Returns
+    - result: dict
+        Contains 'posterior_samples', 'patient_trajectory', and optionally
+        'predictive_log_y', 'predictive_y', and 'prediction_times'.
+    """
+    times = np.asarray(observed_times, dtype=int)
+    y_obs = np.asarray(observed_y, dtype=float)
+
+    if times.size != y_obs.size:
+        raise ValueError('observed_times and observed_y must have the same length')
+    if times.size < 2:
+        raise ValueError('Provide at least two observations to infer posterior')
+    if np.any(np.diff(times) <= 0):
+        raise ValueError('observed_times must be strictly increasing')
+
+    if y_scale == 'linear':
+        y_linear = y_obs
+        if np.any(y_linear <= 0):
+            raise ValueError('observed_y must be positive when y_scale="linear"')
+        log_y = np.log10(y_linear)
+    elif y_scale == 'log10':
+        log_y = y_obs
+        y_linear = 10**log_y
+    else:
+        raise ValueError('y_scale must be "linear" or "log10"')
+
+    patient_trajectory = {
+        'times': times,
+        'log y': log_y,
+        'y': y_linear,
+    }
+
+    # `population_trajectories` is accepted for API compatibility with existing
+    # workflows; current posterior fitting uses the patient trajectory only.
+    _ = population_trajectories
+
+    posterior_samples = sample_posterior(
+        [patient_trajectory],
+        initial_proposal_width=initial_proposal_width,
+        plot=False,
+    )
+
+    result = {
+        'posterior_samples': posterior_samples,
+        'patient_trajectory': patient_trajectory,
+    }
+
+    if predict_to_time is not None:
+        t_last = int(times[-1])
+        t_target = int(predict_to_time)
+        if t_target < t_last:
+            raise ValueError('predict_to_time must be >= last observed time')
+
+        horizon = t_target - t_last
+        prediction_times = np.arange(t_last, t_target + 1)
+
+        predictive_log_y = []
+        predictive_y = []
+        for pd, pb in posterior_samples:
+            logy_sim, y_sim = run_model(
+                y_init=y_linear[-1],
+                pd=pd,
+                pb=pb,
+                modelling_approach=modelling_approach,
+            )
+            predictive_log_y.append(logy_sim[:horizon + 1])
+            predictive_y.append(y_sim[:horizon + 1])
+
+        result['prediction_times'] = prediction_times
+        result['predictive_log_y'] = np.asarray(predictive_log_y)
+        result['predictive_y'] = np.asarray(predictive_y)
+
+    return result
 
 
 def simulate_noisy_trajectory(y_init, pd, pb, times, noise_sd=0.1):
@@ -13,6 +122,45 @@ def simulate_noisy_trajectory(y_init, pd, pb, times, noise_sd=0.1):
         'log y': logy_obs,
         'y': 10**logy_obs,
     }
+
+
+def save_posterior_samples(samples, filename):
+    samples_array = np.asarray(samples, dtype=float)
+    np.savetxt(filename, samples_array, delimiter=',', header='pd,pb', comments='')
+    print(f"Saved posterior samples ({samples_array.shape}) to {filename}")
+
+
+def save_posterior_samples_by_observation_count(
+    observed_times,
+    observed_y,
+    population_trajectories,
+    output_dir='.',
+    prefix='posterior',
+    initial_proposal_width=0.01,
+):
+    """Save posterior samples for all partial trajectories from 2 points onward."""
+    times = np.asarray(observed_times, dtype=int)
+    y = np.asarray(observed_y, dtype=float)
+    if times.size != y.size:
+        raise ValueError('observed_times and observed_y must have the same length')
+    if times.size < 2:
+        raise ValueError('Provide at least two observations to infer posterior')
+
+    created_files = []
+    for n_points in range(2, times.size + 1):
+        result = infer_posterior_and_predict(
+            observed_times=times[:n_points],
+            observed_y=y[:n_points],
+            population_trajectories=population_trajectories,
+            y_scale='linear',
+            initial_proposal_width=initial_proposal_width,
+        )
+        filename = f'{prefix}_{n_points}_points.csv'
+        output_path = os.path.join(output_dir, filename)
+        save_posterior_samples(result['posterior_samples'], output_path)
+        created_files.append(Path(output_path))
+
+    return created_files
 
 
 def predict_new_trajectory(new_trajectory, trajectories, title=None):
@@ -38,7 +186,14 @@ def predict_new_trajectory(new_trajectory, trajectories, title=None):
     lr.fit(X, y)
 
     # Infer parameters for new trajectory
-    samples = sample_posterior([new_trajectory], initial_proposal_width=0.01, plot=False)
+    inference = infer_posterior_and_predict(
+        observed_times=new_trajectory['times'],
+        observed_y=new_trajectory['y'],
+        population_trajectories=trajectories,
+        y_scale='linear',
+        initial_proposal_width=0.01,
+    )
+    samples = inference['posterior_samples']
 
     # Plot model predictions
     for s in samples:
@@ -77,11 +232,12 @@ if __name__ == '__main__':
     trajectories = load_data(data_type='gold standard')
 
     # Create declining synthetic trajectory from the model
-    new_times = np.array([0, 24, 48, 72, 96])
+    # new_times = np.array([0, 24, 48, 72, 96])
+    new_times = np.array([0, 72, 144, 216, 288])
     new_trajectory_full = simulate_noisy_trajectory(
         y_init=10**5,
         pd=0.2,
-        pb=0.18,
+        pb=0.1875,
         times=new_times,
     )
 
@@ -94,10 +250,37 @@ if __name__ == '__main__':
         }
         predict_new_trajectory(new_trajectory=new_trajectory, trajectories=trajectories)
 
+    final_declining_trajectory = {
+        'times': new_trajectory_full['times'],
+        'log y': new_trajectory_full['log y'],
+        'y': new_trajectory_full['y'],
+    }
+    final_declining_inference = infer_posterior_and_predict(
+        observed_times=final_declining_trajectory['times'],
+        observed_y=final_declining_trajectory['y'],
+        population_trajectories=trajectories,
+        y_scale='linear',
+        initial_proposal_width=0.01,
+    )
+    save_posterior_samples(
+        final_declining_inference['posterior_samples'],
+        'declining_example_posterior.csv',
+    )
+    save_posterior_samples_by_observation_count(
+        observed_times=final_declining_trajectory['times'],
+        observed_y=final_declining_trajectory['y'],
+        population_trajectories=trajectories,
+        output_dir='.',
+        prefix='declining_example_posterior',
+        initial_proposal_width=0.01,
+    )
+
     # Create a growth trajectory from model parameters with crypto growth over time
     growth_pd = 0.2
-    growth_pb = 0.28
-    growth_times = np.array([0, 48, 96, 144, 192])  # 5 LPs -> 4 panels
+    growth_pb = 0.25
+    # growth_times = np.array([0, 48, 96, 144, 192])  # 5 LPs -> 4 panels
+    # growth_times = np.array([0, 168, 336])
+    growth_times = np.array([0, 72, 144, 216, 288])
     growth_trajectory_full = simulate_noisy_trajectory(
         y_init=10**2,
         pd=growth_pd,
@@ -116,5 +299,72 @@ if __name__ == '__main__':
             new_trajectory=growth_trajectory,
             trajectories=trajectories
         )
+
+    final_growth_trajectory = {
+        'times': growth_trajectory_full['times'],
+        'log y': growth_trajectory_full['log y'],
+        'y': growth_trajectory_full['y'],
+    }
+    final_growth_inference = infer_posterior_and_predict(
+        observed_times=final_growth_trajectory['times'],
+        observed_y=final_growth_trajectory['y'],
+        population_trajectories=trajectories,
+        y_scale='linear',
+        initial_proposal_width=0.01,
+    )
+    save_posterior_samples(
+        final_growth_inference['posterior_samples'],
+        'growth_example_posterior.csv',
+    )
+    save_posterior_samples_by_observation_count(
+        observed_times=final_growth_trajectory['times'],
+        observed_y=final_growth_trajectory['y'],
+        population_trajectories=trajectories,
+        output_dir='.',
+        prefix='growth_example_posterior',
+        initial_proposal_width=0.01,
+    )
+
+    # # Use below to fit directly to observed log-scale measurements.
+    # # Fit directly to observed log-scale measurements.
+    # observed_times = np.array([0, 48, 96, 144, 192])
+    # observed_log_y = np.array([3, 4, 2, 0.75, 0])
+    # observed_trajectory = {
+    #     'times': observed_times,
+    #     'log y': observed_log_y,
+    #     'y': 10**observed_log_y,
+    # }
+
+    # # Gradually introduce observed data, plotting inference after each LP.
+    # for i in range(2, len(observed_times) + 1):
+    #     observed_partial_trajectory = {
+    #         'times': observed_trajectory['times'][:i],
+    #         'log y': observed_trajectory['log y'][:i],
+    #         'y': observed_trajectory['y'][:i],
+    #     }
+    #     predict_new_trajectory(
+    #         new_trajectory=observed_partial_trajectory,
+    #         trajectories=trajectories,
+    #     )
+
+    # observed_inference = infer_posterior_and_predict(
+    #     observed_times=observed_trajectory['times'],
+    #     observed_y=observed_trajectory['y'],
+    #     population_trajectories=trajectories,
+    #     y_scale='linear',
+    #     initial_proposal_width=0.01,
+    # )
+    # save_posterior_samples(
+    #     observed_inference['posterior_samples'],
+    #     'observed_example_posterior.csv',
+    # )
+    # save_posterior_samples_by_observation_count(
+    #     observed_times=observed_trajectory['times'],
+    #     observed_y=observed_trajectory['y'],
+    #     population_trajectories=trajectories,
+    #     output_dir='.',
+    #     prefix='observed_example_posterior',
+    #     initial_proposal_width=0.01,
+    # )
 
     plt.show()
