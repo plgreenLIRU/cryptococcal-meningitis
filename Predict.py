@@ -7,6 +7,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 
+PROJECT_ROOT = Path(__file__).resolve().parent
+SIMS_DIR = PROJECT_ROOT / 'sims'
+
 
 def infer_posterior_and_predict(
     observed_times,
@@ -126,15 +129,19 @@ def simulate_noisy_trajectory(y_init, pd, pb, times, noise_sd=0.1):
 
 def save_posterior_samples(samples, filename):
     samples_array = np.asarray(samples, dtype=float)
-    np.savetxt(filename, samples_array, delimiter=',', header='pd,pb', comments='')
-    print(f"Saved posterior samples ({samples_array.shape}) to {filename}")
+    output_path = Path(filename)
+    if not output_path.is_absolute():
+        output_path = PROJECT_ROOT / output_path
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(output_path, samples_array, delimiter=',', header='pd,pb', comments='')
+    print(f"Saved posterior samples ({samples_array.shape}) to {output_path}")
 
 
 def save_posterior_samples_by_observation_count(
     observed_times,
     observed_y,
     population_trajectories,
-    output_dir='.',
+    output_dir='sims',
     prefix='posterior',
     initial_proposal_width=0.01,
 ):
@@ -264,13 +271,13 @@ if __name__ == '__main__':
     )
     save_posterior_samples(
         final_declining_inference['posterior_samples'],
-        'declining_example_posterior.csv',
+        SIMS_DIR / 'declining_example_posterior.csv',
     )
     save_posterior_samples_by_observation_count(
         observed_times=final_declining_trajectory['times'],
         observed_y=final_declining_trajectory['y'],
         population_trajectories=trajectories,
-        output_dir='.',
+        output_dir='sims',
         prefix='declining_example_posterior',
         initial_proposal_width=0.01,
     )
@@ -314,13 +321,13 @@ if __name__ == '__main__':
     )
     save_posterior_samples(
         final_growth_inference['posterior_samples'],
-        'growth_example_posterior.csv',
+        SIMS_DIR / 'growth_example_posterior.csv',
     )
     save_posterior_samples_by_observation_count(
         observed_times=final_growth_trajectory['times'],
         observed_y=final_growth_trajectory['y'],
         population_trajectories=trajectories,
-        output_dir='.',
+        output_dir='sims',
         prefix='growth_example_posterior',
         initial_proposal_width=0.01,
     )
