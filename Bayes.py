@@ -312,7 +312,7 @@ def sample_posterior(trajectories, initial_proposal_width=0.1, plot=False):
 def main():
 
     # Load data
-    trajectories = utils.load_data(data_type='animal')
+    trajectories = utils.load_data(data_type='gold standard')
 
     # MCMC
     samples = sample_posterior(trajectories, initial_proposal_width=1e-3, plot=False)
