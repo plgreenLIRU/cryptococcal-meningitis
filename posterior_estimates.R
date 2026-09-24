@@ -1,7 +1,7 @@
 library(tidyverse)
 library(ggtext)
 
-posterior_patient_samples_files <- list.files(".",
+posterior_patient_samples_files <- list.files("sims",
                                               pattern = "points.csv",
                                               full.names = TRUE)
 posterior_patient_samples <- map(posterior_patient_samples_files,
@@ -9,11 +9,6 @@ posterior_patient_samples <- map(posterior_patient_samples_files,
   )
 names(posterior_patient_samples) <- basename(tools::file_path_sans_ext(posterior_patient_samples_files))
 posterior_patient_samples <- bind_rows(posterior_patient_samples, .id = "experiment_id")
-posterior_patient_samples %>%
-  filter(experiment_id == "declining_example_posterior_2_points") %>%
-  pivot_longer(c("pd","pb"), names_to = 'param') %>%
-  ggplot(aes(x = value, colour = param)) +
-  geom_density()
 
 posterior_patient_samples <- posterior_patient_samples %>% 
   mutate(
@@ -32,92 +27,8 @@ posterior_patient_samples <- posterior_patient_samples %>%
     )
   )
 
-posterior_patient_samples %>% 
-  pivot_longer(c("pd","pb"), names_to = 'param') %>%
-  ggplot(aes(x = value, colour = param)) +
-  geom_density() +
-  facet_grid(growth_pattern ~ data_points, scales = "free")
-
-population_posterior <- read_csv("population_samples_temp.csv") %>%
+population_posterior <- read_csv("sims/population_samples_temp.csv") %>%
   select(pd, pb)
-
-population_mean <- colMeans(population_posterior)
-population_cov <- cov(population_posterior)
-
-# 95% joint region in 2D (roughly the 1-sigma ellipse)
-ellipse_cutoff <- qchisq(0.95, df = 2)
-
-# One analysis dataframe for all LP counts and both patterns.
-analysis_df <- posterior_patient_samples %>%
-  filter(growth_pattern %in% c("declining", "growth"), data_points %in% c("2", "3", "4", "5")) %>%
-  mutate(
-    data_points = factor(data_points, levels = c("2", "3", "4", "5")),
-    d2 = mahalanobis(cbind(pd, pb), center = population_mean, cov = population_cov),
-    inside_population_1sd_ellipse = d2 <= ellipse_cutoff
-  )
-
-# Summary table across all LP counts.
-summary_table <- analysis_df %>%
-  group_by(growth_pattern, data_points) %>%
-  summarise(
-    n_total = n(),
-    n_in_population_1sd_ellipse = sum(inside_population_1sd_ellipse),
-    pct_in_population_1sd_ellipse = 100 * mean(inside_population_1sd_ellipse),
-    .groups = "drop"
-  ) %>%
-  arrange(data_points, growth_pattern)
-
-summary_table
-
-# Build ellipse path for plotting in (pd, pb) space.
-ellipse_theta <- seq(0, 2 * pi, length.out = 200)
-unit_circle <- cbind(cos(ellipse_theta), sin(ellipse_theta)) * sqrt(ellipse_cutoff)
-eigen_decomp <- eigen(population_cov)
-transform_matrix <- eigen_decomp$vectors %*% diag(sqrt(pmax(eigen_decomp$values, 0)))
-ellipse_coords <- unit_circle %*% t(transform_matrix)
-population_ellipse_df <- as_tibble(
-  ellipse_coords + matrix(population_mean, nrow = nrow(ellipse_coords), ncol = 2, byrow = TRUE),
-  .name_repair = "minimal"
-)
-colnames(population_ellipse_df) <- c("pd", "pb")
-
-# Final plot: all LP counts, one analysis dataframe.
-analysis_df %>%
-  filter(data_points == "2") %>% 
-  ggplot() +
-  geom_path(
-    data = population_ellipse_df,
-    aes(x = pd, y = pb),
-    colour = "black",
-    linewidth = 1,
-    linetype = "dashed"
-  ) +
-  geom_point(
-    aes(x = pd, y = pb, colour = inside_population_1sd_ellipse),
-    alpha = 0.6,
-    size = .5,
-    # shape no fill
-    shape = 21
-  ) +
-  scale_colour_manual(
-    values = c("FALSE" = "#d95f02", "TRUE" = "#1b9e77"),
-    labels = c("FALSE" = "outside", "TRUE" = "inside")
-  ) +
-  facet_grid(growth_pattern ~ data_points) +
-  labs(
-    x = "p_d",
-    y = "p_b",
-    colour = "Inside 95% confidence region?"
-  ) +
-  theme_minimal()
-
-
-## Ratios
-
-posterior_patient_samples %>% 
-  ggplot(aes(x = pd/pb)) + 
-  geom_density() +
-  facet_grid(growth_pattern ~ data_points, scales = "free")
 
 model <- function(pd, c) {
   # returns pb given pd and c

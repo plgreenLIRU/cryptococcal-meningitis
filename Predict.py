@@ -332,46 +332,4 @@ if __name__ == '__main__':
         initial_proposal_width=0.01,
     )
 
-    # # Use below to fit directly to observed log-scale measurements.
-    # # Fit directly to observed log-scale measurements.
-    # observed_times = np.array([0, 48, 96, 144, 192])
-    # observed_log_y = np.array([3, 4, 2, 0.75, 0])
-    # observed_trajectory = {
-    #     'times': observed_times,
-    #     'log y': observed_log_y,
-    #     'y': 10**observed_log_y,
-    # }
-
-    # # Gradually introduce observed data, plotting inference after each LP.
-    # for i in range(2, len(observed_times) + 1):
-    #     observed_partial_trajectory = {
-    #         'times': observed_trajectory['times'][:i],
-    #         'log y': observed_trajectory['log y'][:i],
-    #         'y': observed_trajectory['y'][:i],
-    #     }
-    #     predict_new_trajectory(
-    #         new_trajectory=observed_partial_trajectory,
-    #         trajectories=trajectories,
-    #     )
-
-    # observed_inference = infer_posterior_and_predict(
-    #     observed_times=observed_trajectory['times'],
-    #     observed_y=observed_trajectory['y'],
-    #     population_trajectories=trajectories,
-    #     y_scale='linear',
-    #     initial_proposal_width=0.01,
-    # )
-    # save_posterior_samples(
-    #     observed_inference['posterior_samples'],
-    #     'observed_example_posterior.csv',
-    # )
-    # save_posterior_samples_by_observation_count(
-    #     observed_times=observed_trajectory['times'],
-    #     observed_y=observed_trajectory['y'],
-    #     population_trajectories=trajectories,
-    #     output_dir='.',
-    #     prefix='observed_example_posterior',
-    #     initial_proposal_width=0.01,
-    # )
-
     plt.show()
