@@ -1,8 +1,8 @@
-# Modelling of Cryptococcal meningitis antifungal regimes
+# Evaluation of novel regimens for cryptococcal meningitis
 
 ## Introduction
 
-This repository contains the code and data used to generate the results in the manuscript titled _An Adaptive Approach for the Evaluation of Novel Antifungal Regimens for Cryptococcal Meningitis_.
+This repository contains the code and data used to generate the results in the 2026 manuscript titled _A Bayesian Sequential Monitoring Framework for Early Evaluation of Novel Regimens for Cryptococcal Meningitis_ by Peter L Green et al.
 
 ## Installation
 
