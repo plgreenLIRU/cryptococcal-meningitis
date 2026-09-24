@@ -103,7 +103,7 @@ def test_large_population(plot=False):
 
 
 def test_gaussian_approx(plot=False):
-    """
+    r"""
     Test the approximation that Y_{t+k} | Y_t=y_t = N(y_t \mu^k, y_t, v, \sigma^2)
     """
     
@@ -182,7 +182,7 @@ def test_gaussian_approx(plot=False):
         fig, ax = plt.subplots()
         ax.plot(np.log10(y_sim_samples.T), color='black', alpha=0.2)
         ax.plot(np.log10(gaussian_mean), color='red', label='Mean (Gaussian approximation)')
-        ax.plot(np.log10(gaussian_mean + 3 * np.sqrt(gaussian_var)), color='red', linestyle='--', label='$\pm$ 3 Standard deviation (Gaussian approximation)')
+        ax.plot(np.log10(gaussian_mean + 3 * np.sqrt(gaussian_var)), color='red', linestyle='--', label=r'$\pm$ 3 Standard deviation (Gaussian approximation)')
         ax.plot(np.log10(gaussian_mean - 3 * np.sqrt(gaussian_var)), color='red', linestyle='--')
         ax.set_xlabel('Time (hours)')
         ax.set_ylabel('log CFU per ml')
