@@ -1,5 +1,25 @@
+from pathlib import Path
+
 import numpy as np
 import pandas
+
+
+DATA_DIR = Path(__file__).resolve().parent / 'data'
+
+
+def _stochastic_transition_count(y_current, pd, pb):
+    """
+    Sample the next population count using a multinomial draw over the three
+    possible per-individual outcomes.
+
+    This is equivalent to sampling each individual separately and summing the
+    outcomes, but it is much faster for large populations.
+    """
+    counts = np.random.multinomial(
+        n=int(y_current),
+        pvals=(pd, (1 - pd) * (1 - pb), (1 - pd) * pb),
+    )
+    return counts[1] + 2 * counts[2]
 
 
 def load_data(data_type : str):
@@ -8,7 +28,7 @@ def load_data(data_type : str):
     """
 
     # Load raw dataset
-    df = pandas.read_csv('Arm2.csv', header=1)
+    df = pandas.read_csv(DATA_DIR / 'Arm2.csv', header=1)
 
     # Remove OUT == "."
     df = df[df["OUT"] != "."]
@@ -50,7 +70,7 @@ def load_data(data_type : str):
     return trajectories
 
 
-def run_model(y_init, pd, pb, modelling_approach='hybrid'):
+def run_model(y_init, pd, pb, modelling_approach='stochastic'):
     """
     Run a model that predicts a single trajectory, starting from initial population y_init.
 
@@ -74,12 +94,10 @@ def run_model(y_init, pd, pb, modelling_approach='hybrid'):
                 if y_sim[-1] < 0.1:
                     y_sim.append(0)
                 else:
-                    X = np.random.choice(3, size=int(y_sim[-1]), p=(pd, (1 - pd) * (1 - pb), (1 - pd) * pb))
-                    y_sim.append(np.sum(X))
+                    y_sim.append(_stochastic_transition_count(y_sim[-1], pd, pb))
     elif modelling_approach == 'stochastic':
         for k in np.arange(1, 337):
-            X = np.random.choice(3, size=y_sim[-1], p=(pd, (1 - pd) * (1 - pb), (1 - pd) * pb))
-            y_sim.append(np.sum(X))
+            y_sim.append(_stochastic_transition_count(y_sim[-1], pd, pb))
     elif modelling_approach == 'linear':
         for k in np.arange(1, 337):
             y_sim.append(y_sim[-1] * mu)
@@ -88,7 +106,8 @@ def run_model(y_init, pd, pb, modelling_approach='hybrid'):
 
     
     y_sim = np.array(y_sim)
-    log_y_sim = np.log10(y_sim)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        log_y_sim = np.log10(y_sim)
 
     # Replace -infs with zeros
     indx = log_y_sim < 0

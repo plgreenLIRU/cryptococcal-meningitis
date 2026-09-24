@@ -1,9 +1,12 @@
+from pathlib import Path
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from Bayes import threshold_line
 
-df = pd.read_csv("population_samples_gold_standard.csv")
+SIMS_DIR = Path(__file__).resolve().parent / "sims"
+df = pd.read_csv(SIMS_DIR / "population_samples_gold_standard.csv")
 
 plt.figure()
 
