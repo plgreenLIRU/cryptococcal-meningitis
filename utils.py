@@ -65,7 +65,7 @@ def load_data(data_type : str):
             pass
         else:
             if len(times) > 1:
-                trajectories.append({'log y': log_y, 'times': times, 'y': 10**log_y, 'data type': data_type})
+                trajectories.append({'id': id, 'log y': log_y, 'times': times, 'y': 10**log_y, 'data type': data_type})
 
     return trajectories
 

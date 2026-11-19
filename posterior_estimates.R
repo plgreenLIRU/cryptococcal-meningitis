@@ -51,8 +51,10 @@ pbs <- pbs %>%
   filter(pb >= 0 & pds >=0,
          !(pb > 1 | pds > 0.5))
 
+dir.create(file.path("figures", "posteriors"), recursive = TRUE, showWarnings = FALSE)
+
 # plot posterior samples using a 2d histogram
-population_posterior %>% 
+population_posterior_plot <- population_posterior %>%
   ggplot(aes(x = pd, y = pb)) +
   geom_bin2d(bins = 100) +
   scale_fill_gradient(name = "Population \nposterior counts", low = "#d0e8f7", high = "#3a9fd6") +
@@ -73,8 +75,7 @@ population_posterior %>%
   ) +
   labs(
     x = "*p*~d~",
-    y = "*p*~b~",
-    title = "Population posterior samples with model line"
+    y = "*p*~b~"
   ) +
   theme_minimal() +
   theme(
@@ -83,4 +84,7 @@ population_posterior %>%
   ) +
   xlim(0, 0.5) +
   ylim(0, 1)
+
+ggsave("figures/posteriors/population_posterior_plot.png", population_posterior_plot, width = 8, height = 6, dpi = 600)
+ggsave("figures/posteriors/population_posterior_plot.pdf", population_posterior_plot, width = 8, height = 6)
 

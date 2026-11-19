@@ -5,13 +5,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 from Bayes import threshold_line
 
-SIMS_DIR = Path(__file__).resolve().parent / "sims"
-df = pd.read_csv(SIMS_DIR / "population_samples_gold_standard.csv")
+PROJECT_ROOT = Path(__file__).resolve().parent
+SIMS_DIR = PROJECT_ROOT / "sims"
+FIGURES_DIR = PROJECT_ROOT / "figures" / "posteriors"
+FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+
+gold_standard_path = SIMS_DIR / "population_samples_gold_standard.csv"
+population_path = gold_standard_path if gold_standard_path.exists() else SIMS_DIR / "population_samples_temp.csv"
+df = pd.read_csv(population_path)
 
 plt.figure()
 
 # Plot limits
-xmax = 0.5
+xmax = 1.0
 ymax = 1.0
 
 # Threshold line
@@ -54,4 +60,23 @@ plt.ylabel(r"$p_b$")
 plt.xlim(0, xmax)
 plt.ylim(0, ymax)
 
-plt.show()
+plt.tight_layout()
+for extension in ("png", "pdf"):
+    plt.savefig(FIGURES_DIR / f"population_posterior.{extension}", dpi=300, bbox_inches="tight")
+plt.close()
+
+# Standalone stasis threshold, with no population posterior overlay
+fig, ax = plt.subplots()
+ax.fill_between(pd_range, 0, pb_range, facecolor="white", edgecolor="black", hatch="..", zorder=0)
+ax.fill_between(pd_range, pb_range, ymax, facecolor="white", edgecolor="black", hatch="/", zorder=0)
+ax.plot(pd_range, pb_range, color="black", linewidth=2, linestyle="-", label=r"$p_b = \frac{p_d}{1-p_d}$", zorder=2)
+ax.set_xlim(0, xmax)
+ax.set_ylim(0, ymax)
+ax.set_xlabel(r"$p_d$")
+ax.set_ylabel(r"$p_b$")
+ax.legend(frameon=True, facecolor="white", edgecolor="black", framealpha=1.0)
+
+fig.tight_layout()
+for extension in ("png", "pdf"):
+    fig.savefig(FIGURES_DIR / f"threshold_only.{extension}", dpi=600, bbox_inches="tight")
+plt.close(fig)

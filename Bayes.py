@@ -6,6 +6,20 @@ import utils
 from scipy.special import logsumexp, gammaln
 from samplers.mh import MH
 
+PROJECT_ROOT = Path(__file__).resolve().parent
+FIGURES_DIR = PROJECT_ROOT / 'figures' / 'diagnostics'
+
+
+def save_figure(fig, name, subfolder=None):
+    """Save a Matplotlib figure as PNG and PDF in an optional subfolder."""
+    output_dir = FIGURES_DIR if subfolder is None else FIGURES_DIR / subfolder
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    for extension in ('png', 'pdf'):
+        fig.savefig(output_dir / f'{name}.{extension}', dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+
 def compute_mu_sigma2(pd, pb):
     """
     Compute the one-step mean multiplier `mu` and variance contribution `sigma2`
@@ -204,18 +218,23 @@ def threshold_line(pd_range):
     return pb_range
 
 
-def sample_posterior(trajectories, initial_proposal_width=0.1, plot=False):
+def sample_posterior(trajectories, initial_proposal_width=0.1, plot=False,
+                     filename_prefix=None, patient_names=None):
     """
     Run MCMC sampling (using Metropolis-Hastings) for a list of observed
     trajectories. For each trajectory this function:
     - initialises multiple chains,
     - runs sampling with `samplers.mh.MH`, and
-    - produces diagnostic plots of samples and model fits.
+    - produces diagnostic plots of samples and model fits in figures/diagnostics.
 
     Parameters
     - trajectories: list of dict-like
         Each element should be a trajectory containing keys used by
         `log_likelihood` and for plotting (`times`, `y`, `log y`).
+    - filename_prefix: str or None
+        Optional base name for diagnostic plots. The trajectory index is appended.
+    - patient_names: list of str or None
+        Optional names used as subfolders for grouping each trajectory's plots.
 
     Returns
     - None
@@ -303,7 +322,20 @@ def sample_posterior(trajectories, initial_proposal_width=0.1, plot=False):
             ax[0].set_xlabel('Time (hours)')
             ax[0].set_ylabel('log CFU per ml')
             plt.tight_layout()
-            plt.show()
+
+            if patient_names is not None:
+                patient_name = patient_names[i] if i < len(patient_names) else f'patient_{i}'
+            else:
+                patient_name = trajectory.get('id')
+
+            if patient_name is not None:
+                patient_folder = ''.join(ch if ch.isalnum() or ch in ('-', '_') else '_' for ch in str(patient_name)).strip('_')
+            else:
+                patient_folder = None
+
+            base_name = filename_prefix or 'posterior_diagnostic'
+            plot_name = f'{base_name}_{i}'
+            save_figure(fig, plot_name, subfolder=patient_folder)
 
     # Concatenate samples
     global_samples = np.vstack([arr for arr in global_samples])
@@ -317,7 +349,7 @@ def main():
     trajectories = utils.load_data(data_type='gold standard')
 
     # MCMC
-    samples = sample_posterior(trajectories, initial_proposal_width=1e-3, plot=False)
+    samples = sample_posterior(trajectories, initial_proposal_width=1e-3, plot=True)
 
     # Save samples to disk
     output_path = Path(__file__).resolve().parent / 'sims' / 'population_samples_temp.csv'

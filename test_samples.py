@@ -1,8 +1,22 @@
+from pathlib import Path
+
 from utils import run_model, load_data
 import numpy as np
 from matplotlib import pyplot as plt
 import Bayes
 from samplers.mh import MH
+
+FIGURES_DIR = Path(__file__).resolve().parent / 'figures' / 'tests'
+
+
+def save_figure(fig, name):
+    """Save a test figure as PNG and PDF without opening a GUI."""
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    for extension in ('png', 'pdf'):
+        fig.savefig(FIGURES_DIR / f'{name}.{extension}', dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
 
 def test_load_data(plot=False):
     trajectories = load_data(data_type='gold standard')
@@ -14,7 +28,7 @@ def test_load_data(plot=False):
         ax.grid()
         ax.set_xlabel('Time (hours)')
         ax.set_ylabel('log CFU per ml')
-        plt.show()
+        save_figure(fig, 'load_data')
     print("Passed test_load_data")
 
 
@@ -58,7 +72,7 @@ def test_run_model(plot=False):
         ax.set_xlabel('Time (hours)')
         ax.set_ylabel('log CFU per ml')
         ax.grid()
-        plt.show()
+        save_figure(fig, 'model_comparison')
 
     print('test_run_model passed')
 
@@ -89,11 +103,11 @@ def test_large_population(plot=False):
         ax.set_xlabel('Time (hours)')
         ax.set_ylabel('log CFU per ml')
         ymin, ymax = ax.get_ylim()
-        ax.axhspan(3, 6, facecolor='#d8c2e3', alpha=0.35, label='high population')
-        ax.axhspan(0, 3, facecolor='#b8d8e8', alpha=0.35, label='low population')
+        ax.axhspan(3, 6, facecolor='#b3b3b3', alpha=0.5, edgecolor='black', hatch='//', label='high population')
+        ax.axhspan(0, 3, facecolor='#e6e6e6', alpha=0.5, edgecolor='black', linewidth=0.1, hatch='...', label='low population')
         ax.set_ylim([0, 6])
-        ax.legend()
-        plt.show()
+        ax.legend(frameon=True, facecolor='white', edgecolor='black', framealpha=1.0)
+        save_figure(fig, 'population_noise')
 
     # Check that the variance grows as expected (until extinction)
     var = np.var(np.array(all_log_y_sim), axis=0)
@@ -178,6 +192,7 @@ def test_gaussian_approx(plot=False):
         ax[1, 1].grid()
 
         plt.tight_layout()
+        save_figure(fig, 'gaussian_moment_comparison')
         
         fig, ax = plt.subplots()
         ax.plot(np.log10(y_sim_samples.T), color='black', alpha=0.2)
@@ -189,8 +204,7 @@ def test_gaussian_approx(plot=False):
         ax.set_ylim([0, np.log10(y_init)])
         ax.legend()
         ax.grid()
-        
-        plt.show()
+        save_figure(fig, 'gaussian_trajectory')
 
     print('test_gaussian_approx passed')
 
@@ -260,8 +274,7 @@ def test_likelihood(plot=False):
         ax[2].set_xlabel(r'$p_b$')
         ax[2].set_ylabel('log likelihood')
         ax[2].set_title('(c)')
-        plt.tight_layout()
-        plt.show()
+        save_figure(fig, 'likelihood_comparison')
 
     print('test_likelihood passed')
 
@@ -307,6 +320,7 @@ def test_sample_posterior(plot=False):
         ax.plot(samples[:, 0], samples[:, 1], '.', color='black', alpha=0.3)
         ax.plot(pd_true, pb_true, 'o', color='red')
         ax.grid()
+        save_figure(fig, 'posterior_samples_test')
 
         # Plot corresponding model predictions
         fig, ax = plt.subplots()
@@ -322,7 +336,7 @@ def test_sample_posterior(plot=False):
         ax.set_ylim([0, 7])
         ax.set_xlabel('Time (hours)')
         ax.set_ylabel('Log CFU per ml')
-        plt.tight_layout()
+        save_figure(fig, 'posterior_prediction_test')
 
     assert np.allclose(mean_prediction, log_y_sim, atol=2)
     assert np.all(mean_prediction + 3 * std_prediction > log_y_sim)
@@ -338,4 +352,3 @@ if __name__ == '__main__':
     test_gaussian_approx(plot=True)
     test_likelihood(plot=True)
     test_sample_posterior(plot=True)
-    plt.show()

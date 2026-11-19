@@ -9,6 +9,8 @@ from sklearn.linear_model import LinearRegression
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SIMS_DIR = PROJECT_ROOT / 'sims'
+FIGURES_DIR = PROJECT_ROOT / 'figures' / 'predictions'
+FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def infer_posterior_and_predict(
@@ -228,7 +230,14 @@ def predict_new_trajectory(new_trajectory, trajectories, title=None):
     ax[1].set_ylabel(r'$p_b$')    
     ax[1].grid()
 
-    plt.tight_layout()
+    fig.tight_layout()
+    if title:
+        safe_title = ''.join(char.lower() if char.isalnum() else '_' for char in title).strip('_')
+    else:
+        safe_title = f"observations_{len(new_trajectory['times'])}"
+    for extension in ('png', 'pdf'):
+        fig.savefig(FIGURES_DIR / f'{safe_title}.{extension}', dpi=300, bbox_inches='tight')
+    plt.close(fig)
 
 
 if __name__ == '__main__':
@@ -255,7 +264,8 @@ if __name__ == '__main__':
             'log y': new_trajectory_full['log y'][:i],
             'y': new_trajectory_full['y'][:i],
         }
-        predict_new_trajectory(new_trajectory=new_trajectory, trajectories=trajectories)
+        predict_new_trajectory(new_trajectory=new_trajectory, trajectories=trajectories,
+                               title=f'declining_observations_{i}')
 
     final_declining_trajectory = {
         'times': new_trajectory_full['times'],
@@ -304,7 +314,8 @@ if __name__ == '__main__':
         }
         predict_new_trajectory(
             new_trajectory=growth_trajectory,
-            trajectories=trajectories
+            trajectories=trajectories,
+            title=f'growth_observations_{i}',
         )
 
     final_growth_trajectory = {
@@ -331,5 +342,3 @@ if __name__ == '__main__':
         prefix='growth_example_posterior',
         initial_proposal_width=0.01,
     )
-
-    plt.show()
